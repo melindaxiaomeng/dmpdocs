@@ -11,12 +11,14 @@
 <body>
   <div id="app">📚 文档加载中…</div>
 
-  <!-- Docsify 核心与插件：全部本地托管，部署后不依赖任何外部 CDN，访问稳定 -->
+  <!--
+    加载顺序（关键！）：① Docsify 核心 → ② 配置对象 window.$docsify → ③ 插件脚本。
+    原因：search / zoom-image 等插件在「脚本加载时」就会读写全局 $docsify；
+    若配置写在插件之后，$docsify 尚未定义，插件会抛 "$docsify is not defined" 而整体失效，搜索框消失。
+    另外插件自身的注册方式为「覆盖式」，我们已把它改为「累积式」($docsify.plugins||[]).concat(...)，
+    否则多个插件会互相覆盖、只剩最后一个生效。
+  -->
   <script src="vendor/docsify/lib/docsify.min.js"></script>
-  <script src="vendor/docsify/lib/plugins/search.min.js"></script>
-  <script src="vendor/docsify/lib/plugins/zoom-image.min.js"></script>
-  <script src="vendor/docsify/lib/plugins/copy-code.min.js"></script>
-  <script src="vendor/docsify/lib/plugins/pagination.min.js"></script>
 
   <script>
     window.$docsify = {
@@ -78,5 +80,11 @@
       ]
     };
   </script>
+
+  <script src="vendor/docsify/lib/plugins/search.min.js"></script>
+  <script src="vendor/docsify/lib/plugins/zoom-image.min.js"></script>
+  <script src="vendor/docsify/lib/plugins/copy-code.min.js"></script>
+  <script src="vendor/docsify/lib/plugins/pagination.min.js"></script>
+
 </body>
 </html>
