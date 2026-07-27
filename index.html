@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>DMP v1.0 · 文档</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+  <meta name="description" content="基于 Docsify 构建的文档站：DMP v1.0" />
+  <!-- 默认亮色主题；脚本支持一键切换到暗色 -->
+  <link id="docsify-theme" rel="stylesheet" href="vendor/docsify/lib/themes/vue.css" />
+</head>
+<body>
+  <div id="app">📚 文档加载中…</div>
+
+  <!-- Docsify 核心与插件：全部本地托管，部署后不依赖任何外部 CDN，访问稳定 -->
+  <script src="vendor/docsify/lib/docsify.min.js"></script>
+  <script src="vendor/docsify/lib/plugins/search.min.js"></script>
+  <script src="vendor/docsify/lib/plugins/zoom-image.min.js"></script>
+  <script src="vendor/docsify/lib/plugins/copy-code.min.js"></script>
+  <script src="vendor/docsify/lib/plugins/pagination.min.js"></script>
+
+  <script>
+    window.$docsify = {
+      name: 'DMP v1.0',
+      repo: '',
+      homepage: 'README.md',
+      loadSidebar: true,
+      loadNavbar: true,
+      subMaxLevel: 3,
+      maxLevel: 4,
+      auto2top: true,
+      notFoundPage: true,
+
+      // 全文搜索（默认索引首页 + 已访问页面）
+      search: {
+        maxAge: 86400000,
+        placeholder: '🔍 搜索文档',
+        noData: '找不到相关结果',
+        depth: 4
+      },
+
+      pagination: {
+        previousText: '上一页',
+        nextText: '下一页',
+        crossChapter: true,
+        crossChapterText: true
+      },
+
+      copyCode: {
+        buttonText: '复制',
+        errorText: '失败',
+        successText: '已复制'
+      },
+
+      // 亮 / 暗主题切换按钮
+      plugins: [
+        function (hook) {
+          hook.doneEach(function () {
+            if (document.getElementById('theme-toggle')) return;
+            var btn = document.createElement('button');
+            btn.id = 'theme-toggle';
+            btn.textContent = '🌗 主题';
+            btn.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:99;padding:6px 12px;border:none;border-radius:6px;background:#42b983;color:#fff;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2)';
+            btn.onclick = function () {
+              var link = document.getElementById('docsify-theme');
+              var isDark = link.href.indexOf('dark.css') > -1;
+              link.href = isDark ? 'vendor/docsify/lib/themes/vue.css' : 'vendor/docsify/lib/themes/dark.css';
+              try { localStorage.setItem('docs-theme', isDark ? 'vue' : 'dark'); } catch (e) {}
+            };
+            document.body.appendChild(btn);
+            try {
+              if (localStorage.getItem('docs-theme') === 'dark') {
+                document.getElementById('docsify-theme').href = 'vendor/docsify/lib/themes/dark.css';
+              }
+            } catch (e) {}
+          });
+        }
+      ]
+    };
+  </script>
+</body>
+</html>
