@@ -365,6 +365,114 @@
 
 ---
 
+### 2.7 AI 智能圈人（Text-to-Rule）
+
+为了让运营无需钻研规则语法，平台在「新建/编辑人群包」抽屉的**规则表达式顶部**内置了 **AI 智能圈人** 模块：用一句话描述你想要的人群，AI 自动把它转换成可编辑的规则卡片，回填到下方规则表达式编辑器。
+
+> 入口位置：**人群包管理 → 新建人群包 / 编辑 → 规则表达式** 区域最上方（紫色边框卡片「AI 智能圈人」）。
+> ⚠️ AI 生成是**全量覆盖**当前规则表达式：生成前请确认下方没有需要保留的手动规则，生成后请人工核对再保存。
+
+#### 2.7.1 怎么用（三步）
+
+1. **写描述**：在输入框里用自然语言描述人群，例如「近 30 天充值大于 500 元的 VIP 用户」。
+2. **（可选）用模板**：点击输入框下方的紫色标签（推荐句式）可一键填入，再按需修改。
+3. **魔法生成**：点击「魔法生成」按钮。也可以按 `Ctrl/⌘ + Enter` 快捷键直接生成。
+   - 生成期间按钮显示「正在为你生成规则卡片...」，请稍候。
+   - 生成成功会提示「规则已生成，请检查确认」，下方规则树已刷新为 AI 给出的条件卡片。
+   - 未命中任何属性/行为、或AI服务异常时，会提示「未找到相关属性/行为，请尝试重新描述。」且**不改动**你原有的规则。
+
+#### 2.7.2 AI 能识别什么（字段与操作符）
+
+AI 的「词汇表」与规则表达式编辑器当前支持的维度**完全一致**，由后端 `dictionary.py` 与前端 `profileConfig` 对齐维护。包含：
+
+**A. 画像属性（18 个）**
+
+| 字段 key | 中文 | 支持操作符 | 值类型 | 多值 |
+|---|---|---|---|---|
+| `last_country` | 最后活跃国家 | in / not_in / eq | string | 是 |
+| `device_os` | 操作系统 | eq / in | string | 是 |
+| `device_model` | 设备型号 | eq / in / like | string | 是 |
+| `is_high_value` | 高价值用户 | eq | bool | 否 |
+| `total_revenue` | 累计充值 LTV | gt / lt / between | float | 是 |
+| `purchase_count` | 累计充值次数 | gt / lt / between | int | 是 |
+| `tags` | 画像标签 | contains_any / contains_all / not_contains | string | 是 |
+| `source_id` | 数据源 | eq / in / not_in | int | 是 |
+| `device_id_type` | 设备 ID 类型 | eq / in | string | 是 |
+| `lang` | 语言 | eq / in / not_in | string | 是 |
+| `is_new_device` | 新设备 | eq | bool | 否 |
+| `last_seen_time` | 最后活跃时间 | gt / lt / between | int(时间戳) | 是 |
+| `vip_level` | VIP 等级 | gt / lt / eq / between | int | 是 |
+| `gender` | 性别 | eq / in / not_in | string | 是 |
+| `city` | 城市 | in / not_in / eq | string | 是 |
+| `province` | 省份 | in / not_in / eq | string | 是 |
+| `age` | 年龄 | gt / lt / between / eq | int | 是 |
+| `register_channel` | 注册渠道 | eq / in / not_in | string | 是 |
+
+**B. 动态行为（标准事件）**
+事件类型（如 `purchase`、`login`、`recharge`、`register`、`order_pay` 等）从「标准事件」字典**动态加载**，与你在前端「标准事件」模块看到的下拉列表保持一致；后端会优先从主后端 `/api/v1/standard-events/selector` 实时同步。
+
+**C. 操作符规范（AI 只输出下列 token，不输出 `>`/`<` 等符号）**
+- 数值/等级比较：`gt`(大于) / `lt`(小于) / `gte`(大于等于) / `lte`(小于等于) / `eq`(等于) / `between`(区间，值取 `[min,max]`)
+- 集合：`in`(包含任一) / `not_in`(排除) / `contains_any` / `contains_all` / `not_contains`
+- 模糊：`like`（仅 `device_model`，如 `iPhone%`）
+- 事件未发生：`not_executed`（value 为 `null`，表示「从未发生过该事件」，如「未登录过」）
+
+**D. 时间窗规范（仅行为条件，相对时间）**
+统一格式：`past_N_days` / `past_N_hours` / `past_N_months`（N 为正整数，如 `past_30_days`）。AI 会自动把「近 30 天」「过去 7 天」「最近 24 小时」等换算成该格式；**不支持绝对日期**。
+
+#### 2.7.3 转换规则（理解 AI 的“脑回路”）
+
+- 多条独立条件默认用 **AND** 组合；用户明确说「或 / 任意满足其一」时才用 **OR**。
+- 多值（如「多个国家 / 多个渠道」）自动拆成数组 + `in` / `not_in`。
+- 「没 / 未 / 没有 + 事件」（如「未登录过」）→ `operator=not_executed`，`value=null`，并给一个合理时间窗。
+- 提到的属性若不在字典里，AI 会**跳过该条件**（不会编造字段）。
+- value 类型自动与字段 `value_kind` 对齐：`int/float` 给数字，`bool` 给 `true/false`，`string` 给字符串。
+
+#### 2.7.4 实战示例（自然语言 → 规则卡片）
+
+**示例 A：近 30 天充值大于 500 元的 VIP 用户**（前端默认模板）
+- 输入：`近30天充值大于500元的VIP用户`
+- 生成（渲染为条件组 AND）：
+  - 画像 `vip_level` `gt` `0`（VIP 用户）
+  - 行为 `recharge`，时间窗 `past_30_days`，数值 `gt` `500`
+- 说明：充值类金额比较会在行为条件上挂「聚合度量」（count/sum + 阈值）渲染，运营可在卡片上继续微调。
+
+**示例 B：过去 7 天浏览商品但未下单的用户**（前端默认模板）
+- 输入：`过去7天浏览商品但未下单的用户`
+- 生成（条件组 AND）：
+  - 行为 `page_view`，时间窗 `past_7_days`（浏览商品）
+  - 行为 `order_pay`，时间窗 `past_7_days`，`not_executed`（从未下单）
+
+**示例 C：位于中国且系统为 iOS 的高价值用户**（前端默认模板）
+- 输入：`位于中国且系统为iOS的高价值用户`
+- 生成（条件组 AND）：
+  - 画像 `last_country` `in` `["CN"]`
+  - 画像 `device_os` `eq` `["iOS"]`
+  - 画像 `is_high_value` `eq` `true`
+
+**示例 D：未登录过的用户**
+- 输入：`最近30天从未登录过的用户`
+- 生成（条件组 AND）：
+  - 行为 `login`，时间窗 `past_30_days`，`not_executed`，`value=null`
+
+**示例 E：多个国家 + 高 LTV 的组合**
+- 输入：`美国和日本的高价值用户，且累计充值LTV大于1000`
+- 生成（条件组 AND）：
+  - 画像 `last_country` `in` `["US","JP"]`
+  - 画像 `is_high_value` `eq` `true`
+  - 画像 `total_revenue` `gt` `1000`
+
+#### 2.7.5 技术参考（部署 / 联调，给技术）
+
+- **独立服务**：AI 圈人由独立的 AI 微服务（`ai-service/`）实现，**与主后端（:8080）不同服务器、不同代理**。服务监听 `:9000`，路由 `POST /api/v1/ai/text-to-rule`，健康检查 `GET /health`。
+- **模型**：默认调用 **DeepSeek-V3**（`deepseek-chat`，OpenAI 兼容协议）。通过 `.env` 配置 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL`；设 `AI_MOCK=1` 或无 key 时走关键词 Mock，便于跑通链路。
+- **零依赖**：`ai-service` 用 Python 标准库（http.server + urllib）实现，无需 `pip install`，直接 `python3 app/main.py` 即可启动。
+- **代理分流**：开发态前端 dev server 已配置两条代理——`/api/v1/ai/text-to-rule` → `:9000`(AI 服务)，`/api` → 主后端 `:8080`；生产由 Nginx 按相同路径分流到两个 upstream，前端无需改动。
+- **字典对齐（关键）**：`ai-service/app/dictionary.py` 的 `PROFILE_FIELDS`（18 个画像字段）与 `EVENTS`（兜底事件，运行时动态同步主后端标准事件）**必须与前端 `RuleExpressionEditor.profileConfig` 及「标准字段 / 标准事件」模块保持口径一致**，否则 AI 产出的 key/operator 在前端无法正确渲染。
+- **服务端校验闸**：LLM 原始产出在返回前端前会经 `validate.py` 做归一化+丢弃非法项（未知字段 / 不支持的操作符 / 类型无法转换 / between 缺两值），保证前端 100% 可渲染；全部丢弃时返回空 rules（前端提示「未找到相关属性/行为，请重新描述」）。
+
+---
+
 ## 三、数据源管理（概览）
 
 数据源定义「用户行为数据从哪里来、怎么解析、怎么清洗」。新建为 4 步向导：
@@ -425,6 +533,12 @@
 
 **Q6：静态策略和动态策略的刷新时间怎么填？**
 静态不填；每天填 `03:00`；每小时填 `:30`（见 2.2 节）。
+
+**Q7：AI 圈人和手工写规则有什么区别？**
+没有本质区别——AI 只是把自然语言「翻译」成与手工完全同构的规则卡片，生成后你仍然可以像手工规则一样任意增删、嵌套、微调，最后一起提交。AI 生成会**整体覆盖**当前规则表达式，生成前请确认下方没有要保留的手动规则。
+
+**Q8：AI 生成后提示「未找到相关属性/行为」？**
+通常是描述里涉及到的属性/事件不在 AI 的已知字典中（如自定义字段尚未录入标准字段，或事件未登记到「标准事件」）。换更通用的说法、或先去「标准字段 / 标准事件」补充字典，再试一次。
 
 ---
 
