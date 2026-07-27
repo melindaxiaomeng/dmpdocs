@@ -1,6 +1,5 @@
 # DMP 平台用户手册
 
-> 适用版本：dmp-backend-frontend v0.0.0（前端构建产物 `dmp-frontend-dist-*.zip`）
 > 适用范围：运营、数据分析、投放人员日常使用；技术对接可参考「规则提交结构」小节。
 
 ---
