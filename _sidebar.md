@@ -1,5 +1,7 @@
 <!-- _sidebar -->
 
+<!-- search -->
+
 * [DMP v1.0 首页](/)
 * [DMP 后台管理系统 API 接口文档](API-Documentation.md)
 * [DMP 数据中台 - 最简 MVP 需求文档](DMP_最简MVP需求文档.md)
