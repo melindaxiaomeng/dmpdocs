@@ -30,8 +30,9 @@
       auto2top: true,
       notFoundPage: true,
 
-      // 全文搜索（默认索引首页 + 已访问页面）
+      // 全文搜索（paths:'auto' 自动索引全部文档，无需逐个访问）
       search: {
+        paths: 'auto',
         maxAge: 86400000,
         placeholder: '🔍 搜索文档',
         noData: '找不到相关结果',
